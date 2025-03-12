@@ -1,0 +1,2539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velvet - Period & Birth Control Tracker</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+      --primary: #a239ca;
+      --primary-light: #c56cf0;
+      --primary-dark: #8e24aa;
+      --secondary: #4d3ae8;
+      --secondary-light: #7c4dff;
+      --accent: #ff0a8c;
+      --accent-light: #ff4db8;
+      --dark-bg: #121212;
+      --dark-surface: #1e1e1e;
+      --dark-card: #252525;
+      --dark-text: #f0f0f0;
+      --dark-text-secondary: #b0b0b0;
+      --dark-border: #333333;
+      --dark-hover: #333333;
+      --success: #00c853;
+      --warning: #ffab00;
+      --error: #ff5252;
+      --radius: 12px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    body {
+      background-color: var(--dark-bg);
+      color: var(--dark-text);
+      min-height: 100vh;
+      font-weight: 300;
+      letter-spacing: 0.015em;
+    }
+    
+    header {
+      background: linear-gradient(to bottom, var(--dark-bg) 80%, transparent);
+      color: white;
+      padding: 1.25rem 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: flex-start;
+    }
+    
+    .app-title {
+      font-size: 1.6rem;
+      font-weight: 300;
+      letter-spacing: 0.075em;
+      font-family: 'Poppins', sans-serif;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .app-title i {
+      color: var(--accent-light);
+      font-size: 1.2rem;
+      margin-left: 0.2rem;
+      animation: pulse 1.5s infinite;
+      -webkit-text-fill-color: var(--accent-light);
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    nav {
+      background-color: var(--dark-card);
+      display: flex;
+      justify-content: space-around;
+      padding: 0.75rem 0.5rem;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.2);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 99;
+    }
+    
+    nav button {
+      background: none;
+      border: none;
+      color: var(--dark-text-secondary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    nav button i {
+      font-size: 1.1rem;
+    }
+    
+    nav button.active {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+    }
+    
+    nav button:hover:not(.active) {
+      background-color: var(--dark-hover);
+      color: white;
+    }
+    
+    .container {
+      padding: 1.25rem;
+      max-width: 600px;
+      margin: 0 auto;
+      padding-bottom: 5rem;
+    }
+    
+    .view {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .view.active {
+      display: block;
+    }
+    
+    h2 {
+      color: var(--primary-light);
+      margin-bottom: 1.25rem;
+      font-size: 1.4rem;
+      font-weight: 600;
+      position: relative;
+      display: inline-block;
+    }
+    
+    h2::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: -5px;
+      width: 50%;
+      height: 3px;
+      background: linear-gradient(to right, var(--primary), var(--accent));
+      border-radius: 3px;
+    }
+    
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 2rem;
+    }
+    
+    .calendar-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      background-color: var(--dark-card);
+      padding: 1rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    
+    .calendar-header h3 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--primary-light);
+    }
+    
+    .days-of-week {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .days-of-week span {
+      text-align: center;
+      font-weight: 500;
+      font-size: 0.8rem;
+      color: var(--dark-text-secondary);
+    }
+    
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: var(--dark-card);
+      border-radius: 50%;
+      font-size: 0.9rem;
+      position: relative;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      transition: all 0.2s ease;
+    }
+    
+    .calendar-day:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .calendar-day.inactive {
+      opacity: 0.3;
+    }
+    
+    .calendar-day.period {
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      color: white;
+    }
+    
+    .calendar-day.medication {
+      border: 2px solid var(--secondary-light);
+    }
+    
+    .calendar-day.today {
+      box-shadow: 0 0 0 2px var(--success);
+    }
+    
+    .calendar-day.selected {
+      box-shadow: 0 0 0 2px var(--secondary-light);
+      transform: scale(1.1);
+    }
+    
+    .calendar-controls button {
+      background: none;
+      border: none;
+      color: var(--primary-light);
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0.5rem;
+      transition: transform 0.2s ease;
+    }
+    
+    .calendar-controls button:hover {
+      transform: scale(1.2);
+    }
+    
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 400;
+      color: var(--dark-text);
+    }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--dark-border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      background-color: var(--dark-card);
+      color: var(--dark-text);
+      transition: all 0.3s ease;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(162, 57, 202, 0.2);
+    }
+    
+    input[type="date"] {
+      font-family: 'Poppins', sans-serif;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      padding: 0.9rem 1.5rem;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 1.25rem;
+      box-shadow: 0 4px 10px rgba(162, 57, 202, 0.3);
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(162, 57, 202, 0.4);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+      box-shadow: 0 4px 10px rgba(77, 58, 232, 0.3);
+    }
+    
+    .btn-secondary:hover {
+      box-shadow: 0 6px 15px rgba(77, 58, 232, 0.4);
+    }
+    
+    .flow-selector {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    
+    .flow-option {
+      border: 2px solid var(--dark-border);
+      border-radius: var(--radius);
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      flex: 1;
+      margin: 0 0.3rem;
+      transition: all 0.2s ease;
+      background-color: var(--dark-card);
+    }
+    
+    .flow-option:hover {
+      border-color: var(--primary-light);
+    }
+    
+    .flow-option.selected {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+    }
+    
+    .symptom-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    
+    .symptom-tag {
+      padding: 0.6rem 1rem;
+      background-color: var(--dark-card);
+      border-radius: 50px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid var(--dark-border);
+    }
+    
+    .symptom-tag:hover {
+      border-color: var(--primary-light);
+    }
+    
+    .symptom-tag.selected {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border-color: transparent;
+    }
+    
+    .card {
+      background-color: var(--dark-card);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    
+    .card h3 {
+      color: var(--primary-light);
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+      font-size: 1.1rem;
+    }
+    
+    .medication-schedule {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.75rem 0 1.25rem;
+    }
+    
+    .day-pill {
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.8rem;
+      background-color: var(--dark-surface);
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+    
+    .day-pill.taken {
+      background-color: var(--success);
+      color: white;
+    }
+    
+    .day-pill.missed {
+      background-color: var(--error);
+      color: white;
+    }
+    
+    .day-pill.today {
+      border: 2px solid var(--warning);
+    }
+    
+    .day-pill.placebo {
+      background-color: var(--dark-surface);
+      opacity: 0.5;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .stat-box {
+      background-color: var(--dark-surface);
+      padding: 1rem;
+      border-radius: var(--radius);
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    
+    .stat-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .stat-number {
+      font-size: 1.8rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--dark-text-secondary);
+    }
+    
+    .settings-option {
+      background-color: var(--dark-card);
+      padding: 1.25rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .settings-label {
+      font-weight: 400;
+    }
+    
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 26px;
+    }
+    
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--dark-surface);
+      transition: .4s;
+      border-radius: 26px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+    
+    .action-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--dark-card);
+      border-radius: 20px 20px 0 0;
+      padding: 1.75rem;
+      box-shadow: 0 -5px 25px rgba(0,0,0,0.3);
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 1000;
+    }
+    
+    .action-sheet.visible {
+      transform: translateY(0);
+    }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0,0,0,0.7);
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    
+    .overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+    
+    .close-sheet {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--dark-text);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+    
+    .close-sheet:hover {
+      background-color: var(--dark-hover);
+    }
+    
+    .sheet-title {
+      margin-bottom: 1.25rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--primary-light);
+    }
+    
+    .chart-container {
+      background-color: var(--dark-surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+      height: 250px;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .chart-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom right, rgba(162, 57, 202, 0.03), rgba(255, 10, 140, 0.03));
+      border-radius: var(--radius);
+      pointer-events: none;
+    }
+    
+    /* Custom style for the symptoms chart container */
+    .symptoms-chart-container {
+      height: 400px;
+      padding: 1.5rem;
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--dark-border);
+    }
+    
+    .data-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .data-label {
+      color: var(--dark-text-secondary);
+    }
+    
+    .data-value {
+      font-weight: 500;
+      color: var(--primary-light);
+    }
+    
+    .pill-progress {
+      width: 100%;
+      height: 8px;
+      background-color: var(--dark-surface);
+      border-radius: 4px;
+      margin: 0.5rem 0 1rem;
+      overflow: hidden;
+    }
+    
+    .pill-progress-bar {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(to right, var(--primary), var(--accent));
+      transition: width 0.3s ease;
+    }
+    
+    .icon-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .icon-stat i {
+      font-size: 1.1rem;
+      color: var(--primary-light);
+      width: 24px;
+      text-align: center;
+    }
+    
+    .welcome-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(162, 57, 202, 0.95), rgba(255, 10, 140, 0.95));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      padding: 2rem;
+      text-align: center;
+      animation: fadeIn 0.5s ease;
+    }
+    
+    .welcome-content {
+      max-width: 500px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius);
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+    
+    .welcome-title {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: white;
+    }
+    
+    .welcome-text {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .welcome-logo {
+      font-size: 3rem;
+      margin-bottom: 2rem;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .welcome-logo i {
+      animation: pulse 1.5s infinite;
+      color: white;
+    }
+    
+    .welcome-logo::after {
+      content: '';
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      z-index: -1;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: expandCircle 3s infinite;
+    }
+    
+    @keyframes expandCircle {
+      0% { width: 40px; height: 40px; opacity: 0.8; }
+      70% { width: 70px; height: 70px; opacity: 0; }
+      100% { width: 40px; height: 40px; opacity: 0; }
+    }
+    
+    .get-started-btn {
+      background-color: white;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 1.1rem;
+      padding: 0.9rem 2rem;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .get-started-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    @media (max-width: 400px) {
+      .calendar-day {
+        font-size: 0.75rem;
+      }
+      
+      .days-of-week span {
+        font-size: 0.7rem;
+      }
+      
+      .stat-number {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Welcome Screen -->
+  <div id="welcome-screen" class="welcome-screen" style="display: none;">
+    <div class="welcome-content">
+      <div class="welcome-logo">
+        <i class="fas fa-heart"></i>
+      </div>
+      <h1 class="welcome-title">Welcome to Velvet</h1>
+      <p class="welcome-text">Ready to start tracking your periods and birth control pills, Riya?</p>
+      <button id="get-started-btn" class="get-started-btn">Get Started</button>
+    </div>
+  </div>
+  
+  <header>
+    <div class="app-title">Velvet <i class="fas fa-heart"></i></div>
+  </header>
+  
+  <div class="container" style="padding-top: 0.5rem;">
+    <!-- Calendar View -->
+    <div id="calendar-view" class="view active">
+      <h2>Calendar</h2>
+      <div class="calendar-header">
+        <div class="calendar-controls">
+          <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+        </div>
+        <h3 id="current-month">March 2025</h3>
+        <div class="calendar-controls">
+          <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+      
+      <div class="days-of-week">
+        <span>S</span>
+        <span>M</span>
+        <span>T</span>
+        <span>W</span>
+        <span>T</span>
+        <span>F</span>
+        <span>S</span>
+      </div>
+      
+      <div id="calendar-grid" class="calendar">
+        <!-- Calendar days will be generated by JavaScript -->
+      </div>
+      
+      <div class="card" id="upcoming-info">
+        <h3>Upcoming</h3>
+        <div class="data-row">
+          <span class="data-label">Next Period</span>
+          <span class="data-value" id="next-period-display">Log your period to see predictions</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Fertility Window</span>
+          <span class="data-value" id="fertility-window-display">Need more data</span>
+        </div>
+        <div class="data-row" id="pill-reminder-row" style="display: none;">
+          <span class="data-label">Next Pill Reminder</span>
+          <span class="data-value" id="next-reminder-display">No medication set</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Period View -->
+    <div id="period-view" class="view">
+      <h2>Log Period</h2>
+      <form id="period-form" class="card">
+        <div class="form-group">
+          <label for="period-date">Date</label>
+          <input type="date" id="period-date" required>
+        </div>
+        
+        <div class="form-group">
+          <label>Flow Intensity</label>
+          <div class="flow-selector">
+            <div class="flow-option" data-flow="light">Light</div>
+            <div class="flow-option" data-flow="medium">Medium</div>
+            <div class="flow-option" data-flow="heavy">Heavy</div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Symptoms</label>
+          <div class="symptom-tags">
+            <div class="symptom-tag" data-symptom="cramps">Cramps</div>
+            <div class="symptom-tag" data-symptom="headache">Headache</div>
+            <div class="symptom-tag" data-symptom="bloating">Bloating</div>
+            <div class="symptom-tag" data-symptom="fatigue">Fatigue</div>
+            <div class="symptom-tag" data-symptom="mood">Mood Swings</div>
+            <div class="symptom-tag" data-symptom="backache">Backache</div>
+            <div class="symptom-tag" data-symptom="loose-motion">Loose Motions</div>
+            <div class="symptom-tag" data-symptom="nausea">Nausea</div>
+            <div class="symptom-tag" data-symptom="acne">Acne</div>
+            <div class="symptom-tag" data-symptom="insomnia">Insomnia</div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="period-notes">Notes</label>
+          <textarea id="period-notes" rows="3"></textarea>
+        </div>
+        
+        <button type="submit" class="btn">Save</button>
+      </form>
+      
+      <div class="chart-container">
+        <canvas id="period-chart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Medication View -->
+    <div id="medication-view" class="view">
+      <h2>Birth Control</h2>
+      
+      <div id="medication-list">
+        <div class="card" id="active-medication" style="display: none;">
+          <h3>Daily Pill</h3>
+          <p>Next pill: <span id="next-pill-time">Today, 8:00 PM</span></p>
+          
+          <div class="medication-schedule">
+            <!-- Pills will be generated by JavaScript -->
+          </div>
+          
+          <div class="form-group">
+            <label>Adherence</label>
+            <div class="pill-progress">
+              <div class="pill-progress-bar" id="pill-adherence-bar" style="width: 0%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span id="pill-current-day">Day 0 of 0</span>
+              <span id="pill-adherence">0% on time</span>
+            </div>
+          </div>
+          
+          <button id="take-pill-btn" class="btn btn-secondary">Log Today's Pill</button>
+        </div>
+        
+        <div class="card" id="no-medication-message">
+          <h3>No Birth Control Added</h3>
+          <p style="margin-bottom: 1rem; color: var(--dark-text-secondary);">Add your birth control details below to start tracking.</p>
+        </div>
+      </div>
+      
+      <h2>Add Birth Control</h2>
+      <form id="medication-form" class="card">
+        <div class="form-group">
+          <label for="med-name">Birth Control Name</label>
+          <input type="text" id="med-name" placeholder="e.g., Alesse, Yaz, etc." required>
+        </div>
+        
+        <div class="form-group">
+          <label for="med-type">Type</label>
+          <select id="med-type" required>
+            <option value="pill">Pill</option>
+            <option value="patch">Patch</option>
+            <option value="ring">Ring</option>
+            <option value="injection">Injection</option>
+            <option value="iud">IUD</option>
+            <option value="implant">Implant</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="med-frequency">Frequency</label>
+          <select id="med-frequency" required>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Every 3 months</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="active-pills">Active Pills</label>
+          <input type="number" id="active-pills" min="1" max="365" value="21">
+        </div>
+        
+        <div class="form-group">
+          <label for="inactive-pills">Inactive Pills (Placebo)</label>
+          <input type="number" id="inactive-pills" min="0" max="28" value="7">
+        </div>
+        
+        <div class="form-group">
+          <label for="reminder-time">Reminder Time</label>
+          <input type="time" id="reminder-time" value="20:00">
+        </div>
+        
+        <div class="form-group">
+          <label for="current-day">Current Day in Cycle</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="number" id="current-day" min="1" max="28" value="1" style="flex: 1;">
+            <span style="flex: 2; color: var(--dark-text-secondary); font-size: 0.9rem;">Enter which day you're on if already taking this pill</span>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn">Save</button>
+      </form>
+    </div>
+    
+    <!-- Insights View -->
+    <div id="insights-view" class="view">
+      <h2>Insights</h2>
+      
+      <div class="chart-container">
+        <canvas id="cycle-chart"></canvas>
+      </div>
+      
+      <div class="card">
+        <h3>Cycle Stats</h3>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-number" id="avg-cycle-length">–</div>
+            <div class="stat-label">Avg. Cycle Days</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-number" id="avg-period-length">–</div>
+            <div class="stat-label">Avg. Period Days</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-number" id="cycle-regularity">–</div>
+            <div class="stat-label">Cycle Regularity</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-number" id="tracked-cycles">0</div>
+            <div class="stat-label">Cycles Tracked</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" id="medication-stats" style="display: none;">
+        <h3>Medication</h3>
+        <div class="icon-stat">
+          <i class="fas fa-check-circle"></i>
+          <span>Birth control adherence: <span id="medication-adherence">–</span></span>
+        </div>
+        <div class="icon-stat">
+          <i class="fas fa-exclamation-circle"></i>
+          <span>Missed pills this month: <span id="missed-pills">0</span></span>
+        </div>
+      </div>
+      
+      <div class="card" id="symptoms-chart-card" style="display: none;">
+        <h3>Top Symptoms</h3>
+        <div class="chart-container symptoms-chart-container">
+          <canvas id="symptoms-chart"></canvas>
+        </div>
+      </div>
+      
+      <div class="card" id="no-data-message">
+        <h3>No Data Yet</h3>
+        <p style="margin-bottom: 1rem; color: var(--dark-text-secondary);">
+          Start tracking your periods to see insights and statistics.
+        </p>
+        <button id="start-tracking-btn" class="btn">Start Tracking Now</button>
+      </div>
+    </div>
+    
+    <!-- Settings View -->
+    <div id="settings-view" class="view">
+      <h2>Settings</h2>
+      
+      <div class="settings-option">
+        <span class="settings-label">Reminders</span>
+        <label class="toggle">
+          <input type="checkbox" id="reminders-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div class="settings-option">
+        <span class="settings-label">Period Predictions</span>
+        <label class="toggle">
+          <input type="checkbox" id="predictions-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div class="settings-option">
+        <span class="settings-label">Ovulation Tracking</span>
+        <label class="toggle">
+          <input type="checkbox" id="ovulation-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div class="settings-option">
+        <span class="settings-label">Dark Mode</span>
+        <label class="toggle">
+          <input type="checkbox" id="dark-mode-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div class="card">
+        <div class="form-group">
+          <label for="avg-cycle">Average Cycle Length (days)</label>
+          <input type="number" id="avg-cycle" min="21" max="45" value="28">
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+          <button id="export-data" class="btn btn-secondary" style="flex: 1;">Export Data</button>
+          <button id="import-data" class="btn btn-secondary" style="flex: 1;">Import Data</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display: none;">
+        <button id="clear-data" class="btn">Clear All Data</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Action Sheet for Day Details -->
+  <div class="overlay" id="overlay"></div>
+  <div class="action-sheet" id="day-details">
+    <button class="close-sheet" id="close-sheet"><i class="fas fa-times"></i></button>
+    <div class="sheet-title" id="detail-date">March 12, 2025</div>
+    
+    <div id="detail-period-data" class="card" style="display: none;">
+      <h3>Period Data</h3>
+      <div class="data-row">
+        <span class="data-label">Flow</span>
+        <span class="data-value" id="flow-intensity">Medium</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Symptoms</span>
+        <span class="data-value" id="detail-symptoms">Cramps, Headache</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">Notes</span>
+        <span id="detail-notes">Felt better after taking ibuprofen.</span>
+      </div>
+    </div>
+    
+    <div id="detail-medication-data" class="card" style="display: none;">
+      <h3>Medication</h3>
+      <div class="data-row">
+        <span class="data-label">Status</span>
+        <span class="data-value" id="pill-status">Taken at 8:05 PM</span>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <button id="add-period-btn" class="btn">Log Period</button>
+      <button id="add-medication-btn" class="btn btn-secondary">Log Medication</button>
+    </div>
+  </div>
+  
+  <nav>
+    <button id="calendar-btn" class="active">
+      <i class="fas fa-calendar-alt"></i>
+      Calendar
+    </button>
+    <button id="period-btn">
+      <i class="fas fa-tint"></i>
+      Period
+    </button>
+    <button id="medication-btn">
+      <i class="fas fa-pills"></i>
+      Pills
+    </button>
+    <button id="insights-btn">
+      <i class="fas fa-chart-line"></i>
+      Insights
+    </button>
+    <button id="settings-btn">
+      <i class="fas fa-cog"></i>
+      Settings
+    </button>
+  </nav>
+  
+  <script>
+    // DOM Elements
+    const navButtons = document.querySelectorAll('nav button');
+    const views = document.querySelectorAll('.view');
+    const calendarGrid = document.getElementById('calendar-grid');
+    const currentMonthElement = document.getElementById('current-month');
+    const prevMonthBtn = document.getElementById('prev-month');
+    const nextMonthBtn = document.getElementById('next-month');
+    const flowOptions = document.querySelectorAll('.flow-option');
+    const symptomTags = document.querySelectorAll('.symptom-tag');
+    const periodForm = document.getElementById('period-form');
+    const periodDateInput = document.getElementById('period-date');
+    const periodNotesInput = document.getElementById('period-notes');
+    const medicationForm = document.getElementById('medication-form');
+    const medNameInput = document.getElementById('med-name');
+    const medTypeInput = document.getElementById('med-type');
+    const medFrequencyInput = document.getElementById('med-frequency');
+    const activePillsInput = document.getElementById('active-pills');
+    const inactivePillsInput = document.getElementById('inactive-pills');
+    const reminderTimeInput = document.getElementById('reminder-time');
+    const currentDayInput = document.getElementById('current-day');
+    const importDataBtn = document.getElementById('import-data');
+    const importFileInput = document.getElementById('import-file');
+    const takePillBtn = document.getElementById('take-pill-btn');
+    const medicationSchedule = document.querySelector('.medication-schedule');
+    const overlay = document.getElementById('overlay');
+    const dayDetails = document.getElementById('day-details');
+    const closeSheetBtn = document.getElementById('close-sheet');
+    const detailDate = document.getElementById('detail-date');
+    const addPeriodBtn = document.getElementById('add-period-btn');
+    const addMedicationBtn = document.getElementById('add-medication-btn');
+    const clearDataBtn = document.getElementById('clear-data');
+    const exportDataBtn = document.getElementById('export-data');
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    
+    // Chart elements
+    const periodChartCtx = document.getElementById('period-chart')?.getContext('2d');
+    const cycleChartCtx = document.getElementById('cycle-chart')?.getContext('2d');
+    const symptomsChartCtx = document.getElementById('symptoms-chart')?.getContext('2d');
+    
+    // App State
+    let currentDate = new Date();
+    let selectedDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+    let selectedFlow = null;
+    let selectedSymptoms = [];
+    let charts = {};
+    let appFirstLaunch = true; // Flag to track first launch
+    
+    // Data structure
+    let userData = {
+      periods: [],
+      medications: [],
+      settings: {
+        reminders: true,
+        predictions: true,
+        ovulation: true,
+        darkMode: true,
+        avgCycle: 28
+      },
+      appLaunched: false // Track if the app has been launched before
+    };
+    
+    // Sample data for initial app state
+    const sampleData = {
+      periods: [],
+      medications: [],
+      settings: {
+        reminders: true,
+        predictions: true,
+        ovulation: true,
+        darkMode: true,
+        avgCycle: 28
+      },
+      appLaunched: false
+    };
+    
+    // Initialize data from local storage if available
+    function initializeData() {
+      try {
+        const savedData = localStorage.getItem('velvetData');
+        if (savedData) {
+          userData = JSON.parse(savedData);
+          appFirstLaunch = !userData.appLaunched;
+        } else {
+          // Use sample data for first-time users
+          userData = {...sampleData};
+          appFirstLaunch = true;
+          localStorage.setItem('velvetData', JSON.stringify(userData));
+        }
+        
+        // Check if this is the first launch and show welcome screen if it is
+        if (appFirstLaunch) {
+          showWelcomeScreen();
+        }
+        
+        // Initialize UI based on data
+        renderCalendar();
+        renderMedicationSchedule();
+        updateInsights();
+        initializeCharts();
+        
+        // Set dark mode toggle based on settings
+        darkModeToggle.checked = userData.settings.darkMode;
+      } catch (error) {
+        console.error("Error initializing data:", error);
+        // Fallback to sample data if there's an error
+        userData = {...sampleData};
+        appFirstLaunch = true;
+        showWelcomeScreen();
+        localStorage.setItem('velvetData', JSON.stringify(userData));
+        
+        renderCalendar();
+        renderMedicationSchedule();
+        updateInsights();
+        initializeCharts();
+      }
+    }
+    
+    // Show welcome screen
+    function showWelcomeScreen() {
+      const welcomeScreen = document.getElementById('welcome-screen');
+      welcomeScreen.style.display = 'flex';
+      
+      // Add event listener for get started button
+      document.getElementById('get-started-btn').addEventListener('click', () => {
+        welcomeScreen.style.display = 'none';
+        
+        // Mark app as launched
+        userData.appLaunched = true;
+        saveData();
+      });
+    }
+    
+    // Save data to local storage
+    function saveData() {
+      try {
+        localStorage.setItem('velvetData', JSON.stringify(userData));
+        return true;
+      } catch (error) {
+        console.error("Error saving data:", error);
+        return false;
+      }
+    }
+    
+    // Initialize charts
+    function initializeCharts() {
+      try {
+        console.log("Initializing charts...");
+        
+        // Period length chart
+        if (document.getElementById('period-chart')) {
+          const periodChartCtx = document.getElementById('period-chart').getContext('2d');
+          const periodLengths = calculatePeriodLengths();
+          console.log("Period lengths data:", periodLengths);
+          
+          charts.periodChart = new Chart(periodChartCtx, {
+            type: 'bar',
+            data: {
+              labels: periodLengths.map(p => p.month),
+              datasets: [{
+                label: 'Period Length (Days)',
+                data: periodLengths.map(p => p.days),
+                backgroundColor: 'rgba(194, 86, 240, 0.7)',
+                borderColor: 'rgba(162, 57, 202, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                title: {
+                  display: true,
+                  text: 'Period Length by Month',
+                  color: '#ffffff',
+                  font: {
+                    size: 16,
+                    weight: '500'
+                  }
+                },
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  titleColor: '#ffffff',
+                  bodyColor: '#ffffff',
+                  borderColor: 'rgba(162, 57, 202, 0.8)',
+                  borderWidth: 1
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    }
+                  },
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.15)'
+                  },
+                  border: {
+                    color: 'rgba(255, 255, 255, 0.3)'
+                  }
+                },
+                x: {
+                  ticks: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    }
+                  },
+                  grid: {
+                    display: false
+                  },
+                  border: {
+                    color: 'rgba(255, 255, 255, 0.3)'
+                  }
+                }
+              }
+            }
+          });
+        }
+        
+        // Cycle length chart
+        if (document.getElementById('cycle-chart')) {
+          const cycleChartCtx = document.getElementById('cycle-chart').getContext('2d');
+          const cycleLengths = calculateCycleLengths();
+          console.log("Cycle lengths data:", cycleLengths);
+          
+          charts.cycleChart = new Chart(cycleChartCtx, {
+            type: 'line',
+            data: {
+              labels: cycleLengths.map(c => c.month),
+              datasets: [{
+                label: 'Cycle Length (Days)',
+                data: cycleLengths.map(c => c.days),
+                fill: true,
+                backgroundColor: 'rgba(255, 10, 140, 0.2)',
+                borderColor: 'rgba(255, 10, 140, 1)',
+                tension: 0.3,
+                pointBackgroundColor: 'rgba(255, 10, 140, 1)',
+                pointBorderColor: '#fff',
+                pointRadius: 5
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                title: {
+                  display: true,
+                  text: 'Cycle Length Trend',
+                  color: '#ffffff',
+                  font: {
+                    size: 16,
+                    weight: '500'
+                  }
+                },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  titleColor: '#ffffff',
+                  bodyColor: '#ffffff',
+                  borderColor: 'rgba(255, 10, 140, 0.8)',
+                  borderWidth: 1
+                },
+                legend: {
+                  labels: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    }
+                  }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: false,
+                  min: Math.min(...cycleLengths.map(c => c.days)) - 2 || 20,
+                  max: Math.max(...cycleLengths.map(c => c.days)) + 2 || 35,
+                  ticks: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    }
+                  },
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.15)'
+                  },
+                  border: {
+                    color: 'rgba(255, 255, 255, 0.3)'
+                  }
+                },
+                x: {
+                  ticks: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    }
+                  },
+                  grid: {
+                    display: false
+                  },
+                  border: {
+                    color: 'rgba(255, 255, 255, 0.3)'
+                  }
+                }
+              }
+            }
+          });
+        }
+        
+        // Symptoms chart
+        if (document.getElementById('symptoms-chart')) {
+          const symptomsChartCtx = document.getElementById('symptoms-chart').getContext('2d');
+          const symptomsData = calculateSymptomFrequency();
+          console.log("Symptoms data:", symptomsData);
+          
+          charts.symptomsChart = new Chart(symptomsChartCtx, {
+            type: 'polarArea',
+            data: {
+              labels: symptomsData.map(s => s.name.charAt(0).toUpperCase() + s.name.slice(1)),
+              datasets: [{
+                data: symptomsData.map(s => s.count),
+                backgroundColor: [
+                  'rgba(162, 57, 202, 0.7)',
+                  'rgba(255, 10, 140, 0.7)',
+                  'rgba(77, 58, 232, 0.7)',
+                  'rgba(124, 77, 255, 0.7)',
+                  'rgba(197, 108, 240, 0.7)',
+                  'rgba(255, 77, 184, 0.7)'
+                ]
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'right',
+                  labels: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    },
+                    padding: 15
+                  }
+                },
+                title: {
+                  display: false
+                },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  titleColor: '#ffffff',
+                  bodyColor: '#ffffff',
+                  borderColor: 'rgba(162, 57, 202, 0.8)',
+                  borderWidth: 1
+                }
+              }
+            }
+          });
+        }
+        
+        console.log("Charts initialized successfully!");
+      } catch (error) {
+        console.error("Error initializing charts:", error);
+      }
+    }
+    
+    // Update charts with new data
+    function updateCharts() {
+      setTimeout(() => {
+        if (charts.periodChart) {
+          const periodLengths = calculatePeriodLengths();
+          charts.periodChart.data.labels = periodLengths.map(p => p.month);
+          charts.periodChart.data.datasets[0].data = periodLengths.map(p => p.days);
+          charts.periodChart.update();
+        }
+        
+        if (charts.cycleChart) {
+          const cycleLengths = calculateCycleLengths();
+          charts.cycleChart.data.labels = cycleLengths.map(c => c.month);
+          charts.cycleChart.data.datasets[0].data = cycleLengths.map(c => c.days);
+          charts.cycleChart.options.scales.y.min = Math.min(...cycleLengths.map(c => c.days)) - 2 || 20;
+          charts.cycleChart.options.scales.y.max = Math.max(...cycleLengths.map(c => c.days)) + 2 || 35;
+          charts.cycleChart.update();
+        }
+        
+        if (charts.symptomsChart) {
+          const symptomsData = calculateSymptomFrequency();
+          charts.symptomsChart.data.labels = symptomsData.map(s => s.name.charAt(0).toUpperCase() + s.name.slice(1));
+          charts.symptomsChart.data.datasets[0].data = symptomsData.map(s => s.count);
+          // Update backgroundColor array if number of symptoms changes
+          const colors = [
+            'rgba(162, 57, 202, 0.8)',
+            'rgba(255, 10, 140, 0.8)',
+            'rgba(77, 58, 232, 0.8)',
+            'rgba(124, 77, 255, 0.8)',
+            'rgba(197, 108, 240, 0.8)',
+            'rgba(255, 77, 184, 0.8)',
+            'rgba(142, 36, 170, 0.8)',
+            'rgba(233, 30, 99, 0.8)',
+            'rgba(103, 58, 183, 0.8)',
+            'rgba(156, 39, 176, 0.8)'
+          ];
+          charts.symptomsChart.data.datasets[0].backgroundColor = colors.slice(0, symptomsData.length);
+          charts.symptomsChart.update();
+        }
+      }, 300);
+    }
+    
+    // Calculate period lengths for chart
+    function calculatePeriodLengths() {
+      if (userData.periods.length === 0) {
+        return []; // Return empty array if no periods logged
+      }
+      
+      // For demo, we'll use varied period lengths based on flow intensity
+      return userData.periods.slice(0, 6).map(period => {
+        const date = new Date(period.date);
+        // Assign different lengths based on flow
+        let days = 5; // Default medium
+        if (period.flow === 'light') days = 4;
+        if (period.flow === 'heavy') days = 6;
+        
+        return {
+          month: date.toLocaleString('default', { month: 'short' }),
+          days: days
+        };
+      }).reverse();
+    }
+    
+    // Calculate cycle lengths for chart
+    function calculateCycleLengths() {
+      if (userData.periods.length < 2) {
+        return []; // Need at least 2 periods to calculate cycle lengths
+      }
+      
+      const sortedPeriods = [...userData.periods].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const cycleLengths = [];
+      
+      for (let i = 1; i < sortedPeriods.length; i++) {
+        const currentDate = new Date(sortedPeriods[i].date);
+        const prevDate = new Date(sortedPeriods[i-1].date);
+        const diffDays = Math.round((currentDate - prevDate) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0 && diffDays < 45) { // Only count reasonable cycles
+          cycleLengths.push({
+            month: currentDate.toLocaleString('default', { month: 'short' }),
+            days: diffDays
+          });
+        }
+      }
+      
+      return cycleLengths;
+    }
+    
+    // Calculate symptom frequency for chart
+    function calculateSymptomFrequency() {
+      if (userData.periods.length === 0) {
+        return []; // Return empty array if no periods logged
+      }
+      
+      const symptoms = {};
+      
+      userData.periods.forEach(period => {
+        period.symptoms.forEach(symptom => {
+          // Format symptom name for display (replace hyphens with spaces and capitalize)
+          const formattedSymptom = symptom.replace(/-/g, ' ');
+          symptoms[formattedSymptom] = (symptoms[formattedSymptom] || 0) + 1;
+        });
+      });
+      
+      return Object.entries(symptoms)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    }
+    
+    navButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        navButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        
+        const targetView = button.id.split('-')[0] + '-view';
+        views.forEach(view => {
+          view.classList.remove('active');
+          if (view.id === targetView) {
+            view.classList.add('active');
+            
+            // If switching to insights view, reinitialize the charts
+            if (view.id === 'insights-view') {
+              // Destroy existing charts if they exist to prevent duplicates
+              if (charts.periodChart) {
+                charts.periodChart.destroy();
+                charts.periodChart = null;
+              }
+              if (charts.cycleChart) {
+                charts.cycleChart.destroy();
+                charts.cycleChart = null;
+              }
+              if (charts.symptomsChart) {
+                charts.symptomsChart.destroy();
+                charts.symptomsChart = null;
+              }
+              
+              // Reinitialize charts with a delay to ensure the view is visible
+              setTimeout(() => {
+                initializeCharts();
+              }, 300);
+            }
+          }
+        });
+      });
+    });
+    
+    // Calendar rendering
+    function renderCalendar() {
+      calendarGrid.innerHTML = '';
+      
+      const monthName = new Date(currentYear, currentMonth, 1).toLocaleString('default', { month: 'long' });
+      currentMonthElement.textContent = `${monthName} ${currentYear}`;
+      
+      const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
+      
+      // Previous month days
+      for (let i = firstDay - 1; i >= 0; i--) {
+        const dayElement = document.createElement('div');
+        dayElement.classList.add('calendar-day', 'inactive');
+        dayElement.textContent = prevMonthDays - i;
+        calendarGrid.appendChild(dayElement);
+      }
+      
+      // Current month days
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dayElement = document.createElement('div');
+        dayElement.classList.add('calendar-day');
+        dayElement.textContent = i;
+        
+        const currentDateObj = new Date(currentYear, currentMonth, i);
+        
+        // Check if it's today
+        const isToday = currentDateObj.toDateString() === new Date().toDateString();
+        if (isToday) {
+          dayElement.classList.add('today');
+        }
+        
+        // Check if it's a period day
+        const isPeriod = userData.periods.some(period => {
+          const periodDate = new Date(period.date);
+          return periodDate.getDate() === i && 
+                 periodDate.getMonth() === currentMonth && 
+                 periodDate.getFullYear() === currentYear;
+        });
+        
+        if (isPeriod) {
+          dayElement.classList.add('period');
+        }
+        
+        // Check if it's a medication day
+        const isMedication = userData.medications.some(med => {
+          return med.history.some(h => {
+            const medDate = new Date(h.date);
+            return medDate.getDate() === i && 
+                   medDate.getMonth() === currentMonth && 
+                   medDate.getFullYear() === currentYear;
+          });
+        });
+        
+        if (isMedication) {
+          dayElement.classList.add('medication');
+        }
+        
+        // Click event for days
+        dayElement.addEventListener('click', () => {
+          document.querySelectorAll('.calendar-day').forEach(day => {
+            day.classList.remove('selected');
+          });
+          dayElement.classList.add('selected');
+          
+          selectedDate = new Date(currentYear, currentMonth, i);
+          
+          // Open the action sheet
+          openDayDetails(selectedDate);
+        });
+        
+        calendarGrid.appendChild(dayElement);
+      }
+      
+      // Next month days
+      const totalDaysDisplayed = firstDay + daysInMonth;
+      const nextMonthDays = 42 - totalDaysDisplayed; // 6 rows of 7 days
+      
+      for (let i = 1; i <= nextMonthDays; i++) {
+        const dayElement = document.createElement('div');
+        dayElement.classList.add('calendar-day', 'inactive');
+        dayElement.textContent = i;
+        calendarGrid.appendChild(dayElement);
+      }
+    }
+    
+    // Month navigation
+    prevMonthBtn.addEventListener('click', () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      renderCalendar();
+    });
+    
+    nextMonthBtn.addEventListener('click', () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      renderCalendar();
+    });
+    
+    // Flow selection handling
+    flowOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        flowOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedFlow = option.getAttribute('data-flow');
+      });
+    });
+    
+    // Symptom selection handling
+    symptomTags.forEach(tag => {
+      tag.addEventListener('click', () => {
+        tag.classList.toggle('selected');
+        
+        const symptom = tag.getAttribute('data-symptom');
+        if (tag.classList.contains('selected')) {
+          selectedSymptoms.push(symptom);
+        } else {
+          selectedSymptoms = selectedSymptoms.filter(s => s !== symptom);
+        }
+      });
+    });
+    
+    // Period form submission
+    periodForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      if (!selectedFlow) {
+        alert('Please select flow intensity');
+        return;
+      }
+      
+      const periodData = {
+        date: periodDateInput.value,
+        flow: selectedFlow,
+        symptoms: [...selectedSymptoms],
+        notes: periodNotesInput.value,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Check if already exists for this date and update if so
+      const existingIndex = userData.periods.findIndex(period => period.date === periodData.date);
+      
+      if (existingIndex >= 0) {
+        userData.periods[existingIndex] = periodData;
+      } else {
+        userData.periods.push(periodData);
+      }
+      
+      saveData();
+      resetPeriodForm();
+      renderCalendar();
+      updateInsights();
+      updateCharts();
+      
+      // Navigate back to calendar
+      document.getElementById('calendar-btn').click();
+      
+      // Show success message
+      alert('Period data saved successfully!');
+    });
+    
+    // Medication form submission
+    medicationForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const currentDay = parseInt(currentDayInput.value) || 1;
+      const activePills = parseInt(activePillsInput.value);
+      const inactivePills = parseInt(inactivePillsInput.value);
+      const totalDays = activePills + inactivePills;
+      
+      // Validate current day is within range
+      if (currentDay < 1 || currentDay > totalDays) {
+        alert(`Current day must be between 1 and ${totalDays}`);
+        return;
+      }
+      
+      // Calculate start date based on current day
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - (currentDay - 1)); // Subtract days to get the actual start date
+      
+      const medicationData = {
+        name: medNameInput.value,
+        type: medTypeInput.value,
+        frequency: medFrequencyInput.value,
+        activePills: activePills,
+        inactivePills: inactivePills,
+        reminderTime: reminderTimeInput.value,
+        startDate: startDate.toISOString(),
+        history: []
+      };
+      
+      // Generate history for all past days (all marked as taken)
+      const currentDateStr = today.toISOString().split('T')[0];
+      
+      for (let i = 1; i <= currentDay; i++) {
+        const pastDate = new Date(startDate);
+        pastDate.setDate(startDate.getDate() + (i - 1));
+        const pastDateStr = pastDate.toISOString().split('T')[0];
+        
+        // Add to history as taken (including current day)
+        medicationData.history.push({
+          date: pastDateStr,
+          taken: true,
+          time: new Date(pastDate.setHours(
+            parseInt(reminderTimeInput.value.split(':')[0]), 
+            parseInt(reminderTimeInput.value.split(':')[1]), 
+            0)).toISOString()
+        });
+      }
+      
+      userData.medications.push(medicationData);
+      saveData();
+      resetMedicationForm();
+      renderMedicationSchedule();
+      renderCalendar(); // Update calendar to show medication marks
+      
+      // Navigate back to calendar
+      document.getElementById('calendar-btn').click();
+      
+      // Show success message
+      alert('Medication saved successfully!');
+    });
+    
+    // Take pill button
+    takePillBtn.addEventListener('click', () => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (userData.medications.length > 0) {
+        const activeMed = userData.medications[userData.medications.length - 1];
+        
+        // Check if already taken today
+        const alreadyTaken = activeMed.history.some(h => h.date === today);
+        
+        if (alreadyTaken) {
+          alert('You\'ve already logged today\'s medication!');
+          return;
+        }
+        
+        // Log the pill for today
+        activeMed.history.push({
+          date: today,
+          taken: true,
+          time: new Date().toISOString()
+        });
+        
+        saveData();
+        renderMedicationSchedule();
+        renderCalendar();
+        updateInsights();
+        
+        alert('Medication logged successfully!');
+      }
+    });
+    
+    // Render medication schedule
+    function renderMedicationSchedule() {
+      if (medicationSchedule) {
+        medicationSchedule.innerHTML = '';
+        
+        if (userData.medications.length > 0) {
+          // Show active medication card and hide the no-medication message
+          document.getElementById('active-medication').style.display = 'block';
+          document.getElementById('no-medication-message').style.display = 'none';
+          document.getElementById('pill-reminder-row').style.display = 'flex';
+          
+          const activeMed = userData.medications[userData.medications.length - 1];
+          const totalDays = activeMed.activePills + activeMed.inactivePills;
+          
+          // Calculate which day of the cycle we're on
+          const startDate = new Date(activeMed.startDate);
+          const today = new Date();
+          const diffTime = Math.abs(today - startDate);
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          const currentDay = (diffDays % totalDays) + 1;
+          
+          // Get today's date string for checking if pill was taken today
+          const todayStr = today.toISOString().split('T')[0];
+          const todayTaken = activeMed.history.some(h => h.date === todayStr);
+          
+          // Update pill current day display
+          document.getElementById('pill-current-day').textContent = `Day ${currentDay} of ${totalDays}`;
+          
+          for (let i = 1; i <= totalDays; i++) {
+            const pillElement = document.createElement('div');
+            pillElement.classList.add('day-pill');
+            pillElement.textContent = i;
+            
+            // Check if it's a placebo pill
+            if (i > activeMed.activePills) {
+              pillElement.classList.add('placebo');
+            }
+            
+            // Check if it's today's pill
+            if (i === currentDay) {
+              pillElement.classList.add('today');
+            }
+            
+            // For pills before today, check history to see if they were taken
+            if (i < currentDay) {
+              // Get the date for this pill
+              const pillDate = new Date(startDate);
+              pillDate.setDate(startDate.getDate() + (i - 1));
+              const pillDateStr = pillDate.toISOString().split('T')[0];
+              
+              // Check if there's a record in history for this date
+              const pillRecord = activeMed.history.find(h => h.date === pillDateStr);
+              
+              if (pillRecord && pillRecord.taken) {
+                pillElement.classList.add('taken');
+              } else {
+                pillElement.classList.add('missed');
+              }
+            } 
+            // For today's pill, check if it's been taken today
+            else if (i === currentDay) {
+              if (todayTaken) {
+                pillElement.classList.add('taken');
+              }
+            }
+            
+            medicationSchedule.appendChild(pillElement);
+          }
+          
+          // Update next pill time
+          document.getElementById('next-pill-time').textContent = `Today, ${activeMed.reminderTime.substring(0, 5)}`;
+          
+          // Update adherence bar
+          const takenCount = activeMed.history.filter(h => {
+            const historyDate = new Date(h.date);
+            return historyDate <= today && h.taken;
+          }).length;
+          
+          const totalActivePillDays = Math.min(diffDays + 1, activeMed.activePills);
+          const adherenceRate = totalActivePillDays > 0 ? (takenCount / totalActivePillDays) * 100 : 100;
+          
+          document.getElementById('pill-adherence-bar').style.width = `${adherenceRate}%`;
+          document.getElementById('pill-adherence').textContent = `${Math.round(adherenceRate)}% on time`;
+        } else {
+          // No medications, hide the active medication card and show the message
+          document.getElementById('active-medication').style.display = 'none';
+          document.getElementById('no-medication-message').style.display = 'block';
+          document.getElementById('pill-reminder-row').style.display = 'none';
+        }
+      }
+    }
+    
+    // Update insights
+    function updateInsights() {
+      if (userData.periods.length > 0) {
+        // Hide the no-data message and show the charts
+        document.getElementById('no-data-message').style.display = 'none';
+        document.getElementById('symptoms-chart-card').style.display = 'block';
+        
+        // Calculate average cycle length
+        let totalCycleDays = 0;
+        let cycleCount = 0;
+        
+        // Sort periods by date
+        const sortedPeriods = [...userData.periods].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        for (let i = 1; i < sortedPeriods.length; i++) {
+          const currPeriod = new Date(sortedPeriods[i].date);
+          const prevPeriod = new Date(sortedPeriods[i-1].date);
+          const diffDays = Math.floor(Math.abs(currPeriod - prevPeriod) / (1000 * 60 * 60 * 24));
+          
+          if (diffDays > 0 && diffDays < 45) { // Only count reasonable cycles
+            totalCycleDays += diffDays;
+            cycleCount++;
+          }
+        }
+        
+        const avgCycleLength = cycleCount > 0 ? Math.round(totalCycleDays / cycleCount) : userData.settings.avgCycle;
+        document.getElementById('avg-cycle-length').textContent = avgCycleLength;
+        
+        // Set tracked cycles
+        document.getElementById('tracked-cycles').textContent = sortedPeriods.length;
+        
+        // Calculate cycle regularity (standard deviation of cycle lengths)
+        if (cycleCount > 1) {
+          const cycleLengths = [];
+          for (let i = 1; i < sortedPeriods.length; i++) {
+            const currPeriod = new Date(sortedPeriods[i].date);
+            const prevPeriod = new Date(sortedPeriods[i-1].date);
+            const diffDays = Math.floor(Math.abs(currPeriod - prevPeriod) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0 && diffDays < 45) {
+              cycleLengths.push(diffDays);
+            }
+          }
+          
+          // Calculate standard deviation
+          const mean = totalCycleDays / cycleCount;
+          const squaredDiffs = cycleLengths.map(length => Math.pow(length - mean, 2));
+          const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / cycleLengths.length;
+          const stdDev = Math.sqrt(variance);
+          
+          // Convert to regularity percentage (lower stdDev = higher regularity)
+          const maxStdDev = 10; // Assuming 10 days variation is completely irregular
+          const regularity = Math.max(0, 100 - (stdDev / maxStdDev) * 100);
+          document.getElementById('cycle-regularity').textContent = `${Math.round(regularity)}%`;
+        } else {
+          document.getElementById('cycle-regularity').textContent = '–';
+        }
+        
+        // Calculate next period and fertility window
+        // If no periods logged yet, don't show predictions
+        if (sortedPeriods.length === 0) {
+          document.getElementById('next-period-display').textContent = "Add your first period";
+          document.getElementById('fertility-window-display').textContent = "Need more data";
+          return;
+        }
+        
+        // Calculate next period
+        const lastPeriod = new Date(sortedPeriods[sortedPeriods.length - 1].date);
+        const nextPeriod = new Date(lastPeriod);
+        nextPeriod.setDate(nextPeriod.getDate() + avgCycleLength);
+        
+        document.getElementById('next-period').textContent = nextPeriod.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        document.getElementById('next-period-display').textContent = nextPeriod.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+        // Calculate fertility window (ovulation is typically 14 days before next period)
+        const ovulationDate = new Date(nextPeriod);
+        ovulationDate.setDate(ovulationDate.getDate() - 14);
+        
+        const fertilityStart = new Date(ovulationDate);
+        fertilityStart.setDate(fertilityStart.getDate() - 5);
+        
+        const fertilityEnd = new Date(ovulationDate);
+        fertilityEnd.setDate(fertilityEnd.getDate() + 1);
+        
+        const fertilityString = 
+          `${fertilityStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${
+            fertilityEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        
+        document.getElementById('fertility-window').textContent = fertilityString;
+        document.getElementById('fertility-window-display').textContent = fertilityString;
+        
+        // Calculate average period length (simplified)
+        document.getElementById('avg-period-length').textContent = '5';
+      }
+      
+      // Medication adherence
+      if (userData.medications.length > 0 && userData.medications[0].history.length > 0) {
+        // Show medication stats
+        document.getElementById('medication-stats').style.display = 'block';
+        const activeMed = userData.medications[userData.medications.length - 1];
+        const startDate = new Date(activeMed.startDate);
+        const today = new Date();
+        const diffTime = Math.abs(today - startDate);
+        const totalDaysSinceMedStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Only count active pills, not placebos
+        const totalActivePillDays = Math.min(totalDaysSinceMedStart, activeMed.activePills);
+        const takenCount = activeMed.history.length;
+        
+        const adherenceRate = totalActivePillDays > 0 ? Math.round((takenCount / totalActivePillDays) * 100) : 100;
+        document.getElementById('medication-adherence').textContent = `${adherenceRate}%`;
+        
+        // Missed pills this month
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const daysSinceMonthStart = Math.floor(Math.abs(today - firstDayOfMonth) / (1000 * 60 * 60 * 24));
+        
+        // Count all days this month up to today
+        const daysThisMonth = Math.min(daysSinceMonthStart + 1, today.getDate());
+        
+        // Count active pills in current month
+        let activePillDaysThisMonth = 0;
+        for (let i = 1; i <= daysThisMonth; i++) {
+          const checkDate = new Date(today.getFullYear(), today.getMonth(), i);
+          const cycleDay = (Math.floor(Math.abs(checkDate - startDate) / (1000 * 60 * 60 * 24)) % (activeMed.activePills + activeMed.inactivePills)) + 1;
+          if (cycleDay <= activeMed.activePills) {
+            activePillDaysThisMonth++;
+          }
+        }
+        
+        const takenThisMonth = activeMed.history.filter(h => {
+          const historyDate = new Date(h.date);
+          return historyDate >= firstDayOfMonth && historyDate <= today;
+        }).length;
+        
+        const missedThisMonth = Math.max(0, activePillDaysThisMonth - takenThisMonth);
+        document.getElementById('missed-pills').textContent = missedThisMonth;
+        
+        // Update next reminder
+        document.getElementById('next-reminder-display').textContent = `Today, ${activeMed.reminderTime.substring(0, 5)}`;
+      } else {
+        // Hide medication stats if no medications
+        document.getElementById('medication-stats').style.display = 'none';
+      }
+      
+      // Common symptoms
+      if (userData.periods.length > 0) {
+        const allSymptoms = userData.periods.flatMap(p => p.symptoms);
+        const symptomCount = {};
+        
+        allSymptoms.forEach(symptom => {
+          symptomCount[symptom] = (symptomCount[symptom] || 0) + 1;
+        });
+        
+        // Sort symptoms by frequency
+        const sortedSymptoms = Object.entries(symptomCount)
+          .sort((a, b) => b[1] - a[1])
+          .map(entry => entry[0]);
+        
+        document.getElementById('most-frequent').textContent = sortedSymptoms.slice(0, 2).join(', ') || 'None recorded';
+      }
+    }
+    
+    // Action sheet for day details
+    function openDayDetails(date) {
+      detailDate.textContent = date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+      
+      // Check for period data
+      const periodData = userData.periods.find(period => {
+        const periodDate = new Date(period.date);
+        return periodDate.toDateString() === date.toDateString();
+      });
+      
+      const detailPeriodData = document.getElementById('detail-period-data');
+      if (periodData) {
+        detailPeriodData.style.display = 'block';
+        document.getElementById('flow-intensity').textContent = periodData.flow.charAt(0).toUpperCase() + periodData.flow.slice(1);
+        document.getElementById('detail-symptoms').textContent = periodData.symptoms.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ') || 'None';
+        document.getElementById('detail-notes').textContent = periodData.notes || 'None';
+      } else {
+        detailPeriodData.style.display = 'none';
+      }
+      
+      // Check for medication data
+      let medicationData = null;
+      
+      if (userData.medications.length > 0) {
+        const dateString = date.toISOString().split('T')[0];
+        
+        userData.medications.forEach(med => {
+          const medData = med.history.find(h => h.date === dateString);
+          if (medData) {
+            medicationData = medData;
+          }
+        });
+      }
+      
+      const detailMedicationData = document.getElementById('detail-medication-data');
+      if (medicationData) {
+        detailMedicationData.style.display = 'block';
+        const takenTime = new Date(medicationData.time);
+        document.getElementById('pill-status').textContent = `Taken at ${takenTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+      } else {
+        detailMedicationData.style.display = 'none';
+      }
+      
+      overlay.classList.add('visible');
+      dayDetails.classList.add('visible');
+    }
+    
+    closeSheetBtn.addEventListener('click', () => {
+      overlay.classList.remove('visible');
+      dayDetails.classList.remove('visible');
+    });
+    
+    overlay.addEventListener('click', () => {
+      overlay.classList.remove('visible');
+      dayDetails.classList.remove('visible');
+    });
+    
+    // Add period button in details
+    addPeriodBtn.addEventListener('click', () => {
+      // Set date in period form
+      periodDateInput.valueAsDate = selectedDate;
+      
+      // Navigate to period view
+      document.getElementById('period-btn').click();
+      
+      // Close sheet
+      overlay.classList.remove('visible');
+      dayDetails.classList.remove('visible');
+    });
+    
+    // Add medication button in details
+    addMedicationBtn.addEventListener('click', () => {
+      const dateString = selectedDate.toISOString().split('T')[0];
+      
+      if (userData.medications.length > 0) {
+        const activeMed = userData.medications[userData.medications.length - 1];
+        
+        // Check if already taken on selected date
+        const alreadyTaken = activeMed.history.some(h => h.date === dateString);
+        
+        if (alreadyTaken) {
+          alert('Medication already logged for this date');
+          overlay.classList.remove('visible');
+          dayDetails.classList.remove('visible');
+          return;
+        }
+        
+        activeMed.history.push({
+          date: dateString,
+          taken: true,
+          time: new Date().toISOString()
+        });
+        
+        saveData();
+        renderMedicationSchedule();
+        renderCalendar();
+        updateInsights();
+        
+        // Close sheet
+        overlay.classList.remove('visible');
+        dayDetails.classList.remove('visible');
+        
+        alert('Medication logged successfully!');
+      } else {
+        // Navigate to medication form
+        document.getElementById('medication-btn').click();
+        
+        // Close sheet
+        overlay.classList.remove('visible');
+        dayDetails.classList.remove('visible');
+      }
+    });
+    
+    // Reset form functions
+    function resetPeriodForm() {
+      periodDateInput.valueAsDate = new Date();
+      periodNotesInput.value = '';
+      selectedFlow = null;
+      selectedSymptoms = [];
+      
+      flowOptions.forEach(opt => opt.classList.remove('selected'));
+      symptomTags.forEach(tag => tag.classList.remove('selected'));
+    }
+    
+    function resetMedicationForm() {
+      medNameInput.value = '';
+      medTypeInput.value = 'pill';
+      medFrequencyInput.value = 'daily';
+      activePillsInput.value = '21';
+      inactivePillsInput.value = '7';
+      reminderTimeInput.value = '20:00';
+      currentDayInput.value = '1';
+    }
+    
+    // Clear all data
+    clearDataBtn.addEventListener('click', function(event) {
+      event.preventDefault();
+      console.log("Clear data button clicked");
+      
+      if (confirm('Are you sure you want to clear all your data? This cannot be undone.')) {
+        console.log("Clearing data...");
+        // Reset to default empty data
+        userData = {
+          periods: [],
+          medications: [],
+          settings: {
+            reminders: true,
+            predictions: true,
+            ovulation: true,
+            darkMode: true,
+            avgCycle: 28
+          },
+          appLaunched: true // Keep the app as launched
+        };
+        
+        // Save empty data to localStorage
+        localStorage.setItem('velvetData', JSON.stringify(userData));
+        
+        // Destroy existing charts
+        if (charts.periodChart) {
+          charts.periodChart.destroy();
+          charts.periodChart = null;
+        }
+        if (charts.cycleChart) {
+          charts.cycleChart.destroy();
+          charts.cycleChart = null;
+        }
+        if (charts.symptomsChart) {
+          charts.symptomsChart.destroy();
+          charts.symptomsChart = null;
+        }
+        
+        // Update UI elements
+        renderCalendar();
+        renderMedicationSchedule();
+        updateInsights();
+        
+        // Navigate back to calendar view
+        document.getElementById('calendar-btn').click();
+        
+        alert('All data has been cleared. You can now start fresh.');
+      }
+    });
+    
+    // Export data
+    exportDataBtn.addEventListener('click', function(event) {
+      event.preventDefault();
+      console.log("Export data button clicked");
+      
+      try {
+        // Create a formatted JSON string with the user data
+        const dataStr = JSON.stringify(userData, null, 2);
+        
+        // Create a data URI for the JSON file
+        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+        
+        // Create a temporary anchor element for downloading
+        const exportFileDefaultName = 'velvet-data-' + new Date().toISOString().split('T')[0] + '.json';
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        
+        // Append to body, click and remove
+        document.body.appendChild(linkElement);
+        linkElement.click();
+        document.body.removeChild(linkElement);
+        
+        console.log("Data exported successfully");
+      } catch (error) {
+        console.error("Error exporting data:", error);
+        alert('There was an error exporting your data. Please try again.');
+      }
+    });
+    
+    // Import data button
+    importDataBtn.addEventListener('click', () => {
+      // Trigger the hidden file input
+      importFileInput.click();
+    });
+    
+    // Import file handling
+    importFileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          
+          // Basic validation to check if the file has the expected structure
+          if (!importedData.periods || !Array.isArray(importedData.periods) || 
+              !importedData.medications || !Array.isArray(importedData.medications) ||
+              !importedData.settings) {
+            throw new Error('Invalid data format');
+          }
+          
+          // Confirm import
+          if (confirm(`Import data containing ${importedData.periods.length} period entries and ${importedData.medications.length} medication entries?`)) {
+            // Replace current data with imported data
+            userData = importedData;
+            saveData();
+            
+            // Reset UI to reflect the new data
+            renderCalendar();
+            renderMedicationSchedule();
+            updateInsights();
+            
+            // Destroy and reinitialize charts
+            if (charts.periodChart) {
+              charts.periodChart.destroy();
+              charts.periodChart = null;
+            }
+            if (charts.cycleChart) {
+              charts.cycleChart.destroy();
+              charts.cycleChart = null;
+            }
+            if (charts.symptomsChart) {
+              charts.symptomsChart.destroy();
+              charts.symptomsChart = null;
+            }
+            
+            // Update settings toggles
+            document.getElementById('reminders-toggle').checked = userData.settings.reminders;
+            document.getElementById('predictions-toggle').checked = userData.settings.predictions;
+            document.getElementById('ovulation-toggle').checked = userData.settings.ovulation;
+            document.getElementById('dark-mode-toggle').checked = userData.settings.darkMode;
+            document.getElementById('avg-cycle').value = userData.settings.avgCycle;
+            
+            // Reinitialize charts if on the insights view
+            if (document.getElementById('insights-view').classList.contains('active')) {
+              setTimeout(() => {
+                initializeCharts();
+              }, 300);
+            }
+            
+            alert('Data imported successfully!');
+          }
+        } catch (error) {
+          console.error('Error importing data:', error);
+          alert('Unable to import data. The file may be corrupted or in an invalid format.');
+        }
+        
+        // Reset the file input
+        importFileInput.value = '';
+      };
+      
+      reader.readAsText(file);
+    });
+    
+    // Settings toggles
+    document.getElementById('reminders-toggle').addEventListener('change', (e) => {
+      userData.settings.reminders = e.target.checked;
+      saveData();
+    });
+    
+    document.getElementById('predictions-toggle').addEventListener('change', (e) => {
+      userData.settings.predictions = e.target.checked;
+      saveData();
+    });
+    
+    document.getElementById('ovulation-toggle').addEventListener('change', (e) => {
+      userData.settings.ovulation = e.target.checked;
+      saveData();
+    });
+    
+    document.getElementById('dark-mode-toggle').addEventListener('change', (e) => {
+      userData.settings.darkMode = e.target.checked;
+      saveData();
+      
+      // Dark mode is now the default, so we don't need to change CSS vars
+    });
+    
+    document.getElementById('avg-cycle').addEventListener('change', (e) => {
+      userData.settings.avgCycle = parseInt(e.target.value) || 28;
+      saveData();
+      updateInsights();
+    });
+    
+    // Add Start Tracking button functionality
+    document.getElementById('start-tracking-btn').addEventListener('click', () => {
+      document.getElementById('period-btn').click();
+    });
+    
+    // Update current day max value when active/inactive pills change
+    activePillsInput.addEventListener('change', updateCurrentDayRange);
+    inactivePillsInput.addEventListener('change', updateCurrentDayRange);
+    
+    function updateCurrentDayRange() {
+      const totalDays = parseInt(activePillsInput.value) + parseInt(inactivePillsInput.value);
+      currentDayInput.max = totalDays;
+      
+      // Adjust current day value if it exceeds the new max
+      if (parseInt(currentDayInput.value) > totalDays) {
+        currentDayInput.value = totalDays;
+      }
+    }
+    
+    // Initialize the app
+    initializeData();
+    
+    // Set period date input to today by default
+    periodDateInput.valueAsDate = new Date();
+  </script>
+</body>
+</html>
