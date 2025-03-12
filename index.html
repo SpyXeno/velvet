@@ -1075,6 +1075,40 @@
         </label>
       </div>
       
+      <div class="settings-option">
+        <span class="settings-label">Repository Sync</span>
+        <label class="toggle">
+          <input type="checkbox" id="github-sync-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div class="card" id="github-settings" style="display: block;">
+        <div class="form-group">
+          <label for="github-token">GitHub Personal Access Token</label>
+          <input type="password" id="github-token" placeholder="Enter your GitHub token">
+        </div>
+        <div class="form-group">
+          <label for="github-repo">Repository Path</label>
+          <input type="text" id="github-repo" placeholder="username/repository" value="your-username/velvet-tracker">
+        </div>
+        <div class="form-group">
+          <label for="github-branch">Branch</label>
+          <input type="text" id="github-branch" placeholder="main or master" value="main">
+        </div>
+        <div class="form-group">
+          <label for="github-file">Data File Path</label>
+          <input type="text" id="github-file" placeholder="data/velvet-data.json" value="data/velvet-data.json">
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button id="save-github-settings" class="btn btn-secondary">Save Settings</button>
+          <button id="sync-now" class="btn btn-secondary">Sync Now</button>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--dark-text-secondary);">
+          This syncs your data with a file in your repository, ensuring it persists across devices and browser refreshes.
+        </p>
+      </div>
+      
       <div class="card">
         <div class="form-group">
           <label for="avg-cycle">Average Cycle Length (days)</label>
@@ -1173,6 +1207,13 @@
     const currentDayInput = document.getElementById('current-day');
     const importDataBtn = document.getElementById('import-data');
     const importFileInput = document.getElementById('import-file');
+    const githubSyncToggle = document.getElementById('github-sync-toggle');
+    const githubTokenInput = document.getElementById('github-token');
+    const githubRepoInput = document.getElementById('github-repo');
+    const githubBranchInput = document.getElementById('github-branch');
+    const githubFileInput = document.getElementById('github-file');
+    const saveGithubSettingsBtn = document.getElementById('save-github-settings');
+    const syncNowBtn = document.getElementById('sync-now');
     const takePillBtn = document.getElementById('take-pill-btn');
     const medicationSchedule = document.querySelector('.medication-schedule');
     const overlay = document.getElementById('overlay');
@@ -1209,7 +1250,12 @@
         predictions: true,
         ovulation: true,
         darkMode: true,
-        avgCycle: 28
+        avgCycle: 28,
+        githubSync: false,
+        githubToken: '',
+        githubRepo: 'your-username/velvet-tracker',
+        githubBranch: 'main',
+        githubFile: 'data/velvet-data.json'
       },
       appLaunched: false // Track if the app has been launched before
     };
@@ -1223,7 +1269,12 @@
         predictions: true,
         ovulation: true,
         darkMode: true,
-        avgCycle: 28
+        avgCycle: 28,
+        githubSync: false,
+        githubToken: '',
+        githubRepo: 'your-username/velvet-tracker',
+        githubBranch: 'main',
+        githubFile: 'data/velvet-data.json'
       },
       appLaunched: false
     };
@@ -1231,10 +1282,24 @@
     // Initialize data from local storage if available
     function initializeData() {
       try {
+        // Try to load from GitHub repository first (if already set up)
         const savedData = localStorage.getItem('velvetData');
         if (savedData) {
           userData = JSON.parse(savedData);
           appFirstLaunch = !userData.appLaunched;
+          
+          // If GitHub sync is enabled, fetch the latest data
+          if (userData.settings.githubSync && 
+              userData.settings.githubToken && 
+              userData.settings.githubRepo) {
+            fetchDataFromGithub()
+              .then(() => {
+                renderCalendar();
+                renderMedicationSchedule();
+                updateInsights();
+                initializeCharts();
+              });
+          }
         } else {
           // Use sample data for first-time users
           userData = {...sampleData};
@@ -1285,15 +1350,186 @@
       });
     }
     
-    // Save data to local storage
+    // Save data to local storage and GitHub if enabled
     function saveData() {
       try {
         localStorage.setItem('velvetData', JSON.stringify(userData));
+        
+        // If GitHub sync is enabled, save to GitHub
+        if (userData.settings.githubSync && 
+            userData.settings.githubToken && 
+            userData.settings.githubRepo) {
+          syncDataToGithub();
+        }
+        
         return true;
       } catch (error) {
         console.error("Error saving data:", error);
         return false;
       }
+    }
+    
+    // Sync data to GitHub repository file
+    async function syncDataToGithub() {
+      try {
+        const token = userData.settings.githubToken;
+        const repo = userData.settings.githubRepo;
+        const branch = userData.settings.githubBranch;
+        const filePath = userData.settings.githubFile;
+        
+        if (!token || !repo || !branch || !filePath) {
+          console.error("GitHub settings are incomplete");
+          return;
+        }
+        
+        // Step 1: Get the current file from the repository to get the SHA
+        const getFileUrl = `https://api.github.com/repos/${repo}/contents/${filePath}?ref=${branch}`;
+        
+        let fileSha = '';
+        let fileExists = true;
+        
+        try {
+          const fileResponse = await fetch(getFileUrl, {
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          });
+          
+          if (fileResponse.status === 404) {
+            // File doesn't exist yet, which is fine
+            fileExists = false;
+          } else if (!fileResponse.ok) {
+            throw new Error(`Failed to get file: ${fileResponse.status}`);
+          } else {
+            const fileData = await fileResponse.json();
+            fileSha = fileData.sha;
+          }
+        } catch (error) {
+          console.error("Error checking file:", error);
+          // Continue anyway - the file might not exist yet
+        }
+        
+        // Step 2: Prepare the content to save
+        const content = JSON.stringify(userData, null, 2);
+        const encodedContent = btoa(unescape(encodeURIComponent(content))); // Convert to base64
+        
+        // Step 3: Create or update the file
+        const updateFileUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`;
+        
+        const requestBody = {
+          message: 'Update Velvet app data',
+          content: encodedContent,
+          branch: branch
+        };
+        
+        // Add SHA if the file exists (for updates)
+        if (fileExists && fileSha) {
+          requestBody.sha = fileSha;
+        }
+        
+        const updateResponse = await fetch(updateFileUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!updateResponse.ok) {
+          throw new Error(`Failed to update file: ${updateResponse.status}`);
+        }
+        
+        console.log("Data successfully synced to GitHub repository");
+      } catch (error) {
+        console.error("Error syncing data to GitHub:", error);
+        // Don't show alert on every auto-sync to avoid annoying the user
+        // Only show alerts on manual syncs
+      }
+    }
+    
+    // Fetch data from GitHub repository file
+    async function fetchDataFromGithub() {
+      try {
+        const token = userData.settings.githubToken;
+        const repo = userData.settings.githubRepo;
+        const branch = userData.settings.githubBranch;
+        const filePath = userData.settings.githubFile;
+        
+        if (!token || !repo || !branch || !filePath) {
+          console.error("GitHub settings are incomplete");
+          return;
+        }
+        
+        // Fetch the file content
+        const fileUrl = `https://api.github.com/repos/${repo}/contents/${filePath}?ref=${branch}`;
+        
+        const fileResponse = await fetch(fileUrl, {
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        
+        if (fileResponse.status === 404) {
+          console.log("Data file not found in repository. Will create it on next save.");
+          return;
+        }
+        
+        if (!fileResponse.ok) {
+          throw new Error(`GitHub API error: ${fileResponse.status}`);
+        }
+        
+        const fileData = await fileResponse.json();
+        const content = decodeURIComponent(escape(atob(fileData.content))); // Decode from base64
+        
+        try {
+          const parsedData = JSON.parse(content);
+          
+          // Validate data structure before using it
+          if (parsedData.periods && 
+              parsedData.medications && 
+              parsedData.settings) {
+            
+            // Keep the current GitHub settings
+            const currentGithubSettings = {
+              githubSync: userData.settings.githubSync,
+              githubToken: userData.settings.githubToken,
+              githubRepo: userData.settings.githubRepo,
+              githubBranch: userData.settings.githubBranch,
+              githubFile: userData.settings.githubFile
+            };
+            
+            // Update userData with fetched data
+            userData = parsedData;
+            
+            // Restore GitHub settings
+            userData.settings = {
+              ...userData.settings,
+              ...currentGithubSettings
+            };
+            
+            // Save to localStorage
+            localStorage.setItem('velvetData', JSON.stringify(userData));
+            
+            console.log("Data successfully fetched from GitHub repository");
+            
+            // Return true to indicate successful data fetch
+            return true;
+          } else {
+            console.error("Invalid data structure in GitHub file");
+          }
+        } catch (error) {
+          console.error("Error parsing data from GitHub:", error);
+        }
+      } catch (error) {
+        console.error("Error fetching data from GitHub:", error);
+      }
+      
+      // Return false if fetch failed
+      return false;
     }
     
     // Initialize charts
@@ -1807,8 +2043,11 @@
         return;
       }
       
+      // Get the date string directly from the input value
+      const selectedDate = periodDateInput.value;
+      
       const periodData = {
-        date: periodDateInput.value,
+        date: selectedDate,
         flow: selectedFlow,
         symptoms: [...selectedSymptoms],
         notes: periodNotesInput.value,
@@ -2249,8 +2488,14 @@
     
     // Add period button in details
     addPeriodBtn.addEventListener('click', () => {
+      // Format date in YYYY-MM-DD format for the date input
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      
       // Set date in period form
-      periodDateInput.valueAsDate = selectedDate;
+      periodDateInput.value = formattedDate;
       
       // Navigate to period view
       document.getElementById('period-btn').click();
@@ -2340,7 +2585,10 @@
             predictions: true,
             ovulation: true,
             darkMode: true,
-            avgCycle: 28
+            avgCycle: 28,
+            githubSync: userData.settings.githubSync,
+            githubToken: userData.settings.githubToken,
+            githubGistId: userData.settings.githubGistId
           },
           appLaunched: true // Keep the app as launched
         };
@@ -2500,8 +2748,71 @@
     document.getElementById('dark-mode-toggle').addEventListener('change', (e) => {
       userData.settings.darkMode = e.target.checked;
       saveData();
+    });
+    
+    document.getElementById('github-sync-toggle').addEventListener('change', (e) => {
+      userData.settings.githubSync = e.target.checked;
       
-      // Dark mode is now the default, so we don't need to change CSS vars
+      // Toggle visibility of GitHub settings sections
+      document.getElementById('github-settings').style.display = 
+        e.target.checked ? 'block' : 'none';
+      
+      saveData();
+    });
+    
+    // Save GitHub settings
+    saveGithubSettingsBtn.addEventListener('click', async () => {
+      const token = githubTokenInput.value.trim();
+      const repo = githubRepoInput.value.trim();
+      const branch = githubBranchInput.value.trim();
+      const filePath = githubFileInput.value.trim();
+      
+      if (!token) {
+        alert("Please enter a GitHub Personal Access Token");
+        return;
+      }
+      
+      if (!repo) {
+        alert("Please enter a repository (username/repository)");
+        return;
+      }
+      
+      if (!branch) {
+        alert("Please enter a branch name");
+        return;
+      }
+      
+      if (!filePath) {
+        alert("Please enter a file path");
+        return;
+      }
+      
+      // Save GitHub settings
+      userData.settings.githubToken = token;
+      userData.settings.githubRepo = repo;
+      userData.settings.githubBranch = branch;
+      userData.settings.githubFile = filePath;
+      userData.settings.githubSync = true;
+      githubSyncToggle.checked = true;
+      
+      saveData();
+      alert("Repository settings saved successfully!");
+    });
+    
+    // Sync now button
+    syncNowBtn.addEventListener('click', async () => {
+      if (!userData.settings.githubToken || !userData.settings.githubRepo) {
+        alert("Please enter GitHub token and repository information first");
+        return;
+      }
+      
+      try {
+        await syncDataToGithub();
+        alert("Data synced successfully to GitHub repository!");
+      } catch (error) {
+        console.error("Error syncing data:", error);
+        alert("Failed to sync data. Please check your GitHub settings.");
+      }
     });
     
     document.getElementById('avg-cycle').addEventListener('change', (e) => {
